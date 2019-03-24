@@ -1,99 +1,121 @@
-WELCOME_MESSAGE = "Hello {}, and welcome to the psycho app!\r\nYou can exit anytime by typing 'exit'\r\n"
-QUESTION_MESSAGE = "What is {} times {}?"
+import numpy
+
 EXIT_REQUEST = "exit"
 HELP_REQUEST = "help"
-GET_ANSWER_MESSAGE = "Your answer: "
-HELP_MESSAGE = "Please answer with numbers only.\r\nTo exit, please type 'exit'"
-SUCCESFUL_MESSAGE = "Hooray!"
 RESULT_MESSAGE_FORMAT = "{}\r\n{}. {}"
-FAILURE_MESSAGE = "incorrect, the answer is {}, better luck next time!"
-TIMING_MESSAGE_FORMAT = "Elapsed time: {}"
-STREAK_MESSAGE_FORMAT = "You got {} in a row!"
-QUIT_MESSAGE = "Thank you and goodbye!"
 DEFAULT_NAME = "Lilya"
+
+LEVELS = {"Easy": {"start_num": 1,
+                   "end_num":   20,
+                   "numbers":   2}
+          }
+
 
 from random import randint
 from datetime import datetime
 from functools import wraps
 import sys
-
-
-def exit_game():
-	print QUIT_MESSAGE
-	sys.exit()
-
-
-def help():
-	print HELP_MESSAGE
+import Interpreter as io
 
 
 def timing(f):
-	@wraps(f)
-	def wrapper(*args, **kwargs):
-		start = datetime.now()
-		result = f(*args, **kwargs)
-		time_diff = datetime.now() - start
-		return result, time_diff.seconds
-	return wrapper
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        start = datetime.now()
+        result = f(*args, **kwargs)
+        time_diff = datetime.now() - start
+        return result, time_diff.seconds
+    return wrapper
 
 
-def generate_numbers(start=1, end=20, numbers=2):
-	return [randint(start, end) for i in range(numbers)]
+class Question(object):
+    def __init__(self, question_type="Multiple", level="Easy"):
+        self.type = question_type
+        parameters = LEVELS[level]
+        self.numbers = Question.generate_numbers(**parameters)
+
+        if type == "Multiple":
+            self.answer = numpy.prod(self.numbers)
+        else:
+            self.answer = None
 
 
-def get_answer():
-	user_input = raw_input(GET_ANSWER_MESSAGE)
-
-	if user_input.isdigit():
-		return int(user_input)
-	elif user_input == EXIT_REQUEST:
-		return exit_game()
-	else:
-		help()
-		return get_answer()
+    @staticmethod
+    def generate_numbers(start_num=1, end_num=20, numbers=2):
+        return [randint(start_num, end_num) for i in range(numbers)]
 
 
-@timing
-def question():
-	a, b = generate_numbers()
-	answer = None
+    def ask(self):
+        if self.type == "Multiple":
+            io.send("question multiple", *self.numbers)
 
-	print QUESTION_MESSAGE.format(a, b)
-	answer = get_answer()
 
-	if answer == a * b:
-		return True, SUCCESFUL_MESSAGE
-	
-	return False, FAILURE_MESSAGE.format(a*b)
+    def check(self, answer):
+        return answer == self.answer
 
-def print_result(result_message, time, row):
-	if row > 3:
-		streak_message = STREAK_MESSAGE_FORMAT.format(row)
-	else:
-		streak_message = ""
 
-	timing_message = TIMING_MESSAGE_FORMAT.format(time)
+class Game(object):
+    def __init__(self, name):
+        self.streak = 0
+        self.name = name
+        io.send("welcome", self.name)
 
-	print RESULT_MESSAGE_FORMAT.format(result_message, timing_message, streak_message)
+
+    def run(self):
+        quit = False
+        while not quit:
+            good_answer, time = self.ask_question()
+            io.send("time", time=time)
+
+            self.streak = self.streak + 1 if good_answer else 0
+            if self.streak > 3:
+                io.send("streak", streak=self.streak)
+
+        self.exit_game()
+
+
+    @staticmethod
+    def exit_game():
+        io.send("quit")
+        sys.exit()
+
+
+    @staticmethod
+    def help():
+        io.send("help")
+
+
+    def get_answer(self):
+        user_input = io.receive("answer")
+
+        if user_input.isdigit():
+            return int(user_input)
+        elif user_input == EXIT_REQUEST:
+            return Game.exit_game()
+        else:
+            help()
+            return Game.get_answer()
+
+
+    @timing
+    def ask_question(self):
+        question = Question("Multiple", "Easy")
+        question.ask()
+        answer = self.get_answer()
+
+        if question.check(answer):
+            io.send("success")
+            return True
+
+        real_answer = question.answer
+        io.send("failure", real_answer)
+        return False
 
 
 def main(name=DEFAULT_NAME):
-	print WELCOME_MESSAGE.format(DEFAULT_NAME)
-	exit = False
-	row = 0
-
-	while not exit:
-		(good_answer, result_message), time = question()
-		row = row + 1 if good_answer else 0
-
-		print_result(result_message, time, row)
-
-		print
-
-	exit_game()
-
+    new_game = Game(name)
+    new_game.run()
 
 
 if __name__ == "__main__":
-	main()
-	raw_input()
+    main()

@@ -2,7 +2,7 @@ __author__ = 'Kfir'
 
 MESSAGE = {"help":              "Please answer with numbers only.\r\nTo exit, please type 'exit'",
            "welcome":           "Hello {name}, and welcome to the psycho app!\r\nYou can exit anytime by typing 'exit'\r\n",
-           "quit":              "Thank you and goodbye!",
+           "quit":              "\nYour Score: {points}\nMax streak: {streak}\nThank you and goodbye!",
            "failure":           "incorrect, the answer is {}, better luck next time!",
            "success":           "Hooray!",
            "answer" :           "Your answer: ",
@@ -10,7 +10,7 @@ MESSAGE = {"help":              "Please answer with numbers only.\r\nTo exit, pl
            "streak":            "You got {streak} in a row!",
            "level up":          "--------LEVEL {level}--------",
            "points":            "Points: {points}",
-           "question multiple": "Level {level}\nWhat is {} times {}?",
+           "question": "Level {level}: What is {question}?",
            "question end":      "\n"
            }
 LB = '\n'
@@ -33,3 +33,11 @@ def receive(message=None, *args, **kwargs):
     kwargs["end"] = ''
     send(message, *args, **kwargs)
     return input()
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()

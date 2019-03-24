@@ -3,7 +3,7 @@ from random import randint
 from datetime import datetime
 from functools import wraps
 import sys
-import interpreter as io
+import terminal as io
 
 EXIT_REQUEST = ["exit", "quit", "end"]
 HELP_REQUEST = "help"
@@ -16,13 +16,21 @@ LEVELS = {1: {"start_num": 1,
               "end_num":   20,
               "numbers":   2},
 
-          3: {"start_num": 10,
+          3: {"start_num": 1,
+              "end_num":   10,
+              "numbers":   3},
+
+          4: {"start_num": 1,
               "end_num":   99,
               "numbers":   2},
 
-          4: {"start_num": 10,
-              "end_num":   299,
-              "numbers":   2},
+          5: {"start_num": 1,
+              "end_num":   29,
+              "numbers":   3},
+
+          6: {"start_num": 1,
+              "end_num":   79,
+              "numbers":   3},
           }
 
 
@@ -57,7 +65,9 @@ class Question(object):
 
     def ask(self):
         if self.type == "Multiple":
-            io.send("question multiple", *self.numbers, level=self.level)
+            operator = '*'
+        question = operator.join(map(str, self.numbers))
+        io.send("question", question=question, level=self.level)
         self.user_answer, self.time = Question.get_answer()
 
 
@@ -73,7 +83,7 @@ class Question(object):
         if user_input.isdigit():
             return int(user_input)
         elif user_input in EXIT_REQUEST:
-            Game.exit_game()
+            return user_input
         Game.help()
         return Question.get_answer()
 
@@ -81,6 +91,7 @@ class Question(object):
 class Game(object):
     def __init__(self, name, start_level=1):
         self.streak = 0
+        self.max_streak = 0
         self.points = 0
         self.name = name
         self.level = start_level
@@ -104,30 +115,34 @@ class Game(object):
             io.send("level up", level=self.level)
 
         self.ask_question()
-        points = self.calculate_points()
-        time = self.question.time
-        correct_answer = self.question.correct_answer
 
-        if self.question.check:
-            io.send("success")
-            self.streak += 1
+        if self.question.user_answer in EXIT_REQUEST:
+            self.exit_game()
         else:
-            io.send("failure", correct_answer)
-            self.streak = 0
-            self.level = max(min(LEVELS.keys()), self.level - 1)
+            points = self.calculate_points()
+            time = self.question.time
+            correct_answer = self.question.correct_answer
 
-        if self.streak > 3:
-            io.send("streak", streak=self.streak)
-        io.send("points", points=points, end=' ')
-        io.send("time", time=time)
-        io.send("question end")
+            if self.question.check:
+                io.send("success")
+                self.streak += 1
+            else:
+                io.send("failure", correct_answer)
+                self.streak = 0
+                self.level = max(min(LEVELS.keys()), self.level - 1)
 
-        self.run()
+            if self.streak > 3:
+                io.send("streak", streak=self.streak)
+            io.send("points", points=points, end=' ')
+            io.send("time", time=time)
+            io.send("question end")
+
+            self.max_streak = max(self.max_streak, self.streak)
+            self.run()
 
 
-    @staticmethod
-    def exit_game():
-        io.send("quit")
+    def exit_game(self):
+        io.send("quit", streak=self.max_streak, points=self.points)
         sys.exit()
 
 

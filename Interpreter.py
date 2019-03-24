@@ -8,8 +8,10 @@ MESSAGE = {"help":              "Please answer with numbers only.\r\nTo exit, pl
            "answer" :           "Your answer: ",
            "time":              "Elapsed time: {time}",
            "streak":            "You got {streak} in a row!",
+           "level up":          "--------LEVEL {level}--------",
            "points":            "Points: {points}",
-           "question multiple": "\nWhat is {} times {}?"
+           "question multiple": "Level {level}\nWhat is {} times {}?",
+           "question end":      "\n"
            }
 LB = '\n'
 

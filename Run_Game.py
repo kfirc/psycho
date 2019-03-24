@@ -44,6 +44,7 @@ class Question(object):
         self.correct_answer = None
         self.user_answer = None
         self.time = 0
+        self.level = level
 
         if question_type == "Multiple":
             self.correct_answer = numpy.prod(self.numbers)
@@ -56,7 +57,7 @@ class Question(object):
 
     def ask(self):
         if self.type == "Multiple":
-            io.send("question multiple", *self.numbers)
+            io.send("question multiple", *self.numbers, level=self.level)
         self.user_answer, self.time = Question.get_answer()
 
 
@@ -98,8 +99,9 @@ class Game(object):
 
 
     def run(self):
-        if self.streak % 5 == 0:
-            self.level = min(max(LEVELS.keys()), self.level + 1)
+        if self.streak % 5 == 0 and self.streak and self.level < max(LEVELS.keys()):
+            self.level += 1
+            io.send("level up", level=self.level)
 
         self.ask_question()
         points = self.calculate_points()
@@ -118,6 +120,7 @@ class Game(object):
             io.send("streak", streak=self.streak)
         io.send("points", points=points, end=' ')
         io.send("time", time=time)
+        io.send("question end")
 
         self.run()
 

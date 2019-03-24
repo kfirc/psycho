@@ -1,14 +1,15 @@
 __author__ = 'Kfir'
 
-MESSAGE = {"help":    "Please answer with numbers only.\r\nTo exit, please type 'exit'",
-           "welcome": "Hello {name}, and welcome to the psycho app!\r\nYou can exit anytime by typing 'exit'\r\n",
-           "quit":    "Thank you and goodbye!",
-           "failure": "incorrect, the answer is {}, better luck next time!",
-           "success": "Hooray!",
-           "answer" : "Your answer: ",
-           "time":    "Elapsed time: {time}",
-           "streak":  "You got {streak} in a row!",
-           "question multiple": "What is {} times {}?"
+MESSAGE = {"help":              "Please answer with numbers only.\r\nTo exit, please type 'exit'",
+           "welcome":           "Hello {name}, and welcome to the psycho app!\r\nYou can exit anytime by typing 'exit'\r\n",
+           "quit":              "Thank you and goodbye!",
+           "failure":           "incorrect, the answer is {}, better luck next time!",
+           "success":           "Hooray!",
+           "answer" :           "Your answer: ",
+           "time":              "Elapsed time: {time}",
+           "streak":            "You got {streak} in a row!",
+           "points":            "Points: {points}",
+           "question multiple": "\nWhat is {} times {}?"
            }
 LB = '\n'
 

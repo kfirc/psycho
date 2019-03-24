@@ -8,19 +8,19 @@ import interpreter as io
 EXIT_REQUEST = ["exit", "quit", "end"]
 HELP_REQUEST = "help"
 
-LEVELS = {0: {"start_num": 1,
+LEVELS = {1: {"start_num": 1,
               "end_num":   10,
               "numbers":   2},
 
-          1: {"start_num": 1,
+          2: {"start_num": 1,
               "end_num":   20,
               "numbers":   2},
 
-          2: {"start_num": 10,
+          3: {"start_num": 10,
               "end_num":   99,
               "numbers":   2},
 
-          3: {"start_num": 10,
+          4: {"start_num": 10,
               "end_num":   299,
               "numbers":   2},
           }
@@ -37,7 +37,7 @@ def timing(f):
 
 
 class Question(object):
-    def __init__(self, question_type="Multiple", level=0):
+    def __init__(self, question_type="Multiple", level=1):
         parameters = LEVELS[level]
         self.numbers = Question.generate_numbers(**parameters)
         self.type = question_type
@@ -78,8 +78,9 @@ class Question(object):
 
 
 class Game(object):
-    def __init__(self, name, start_level=0):
+    def __init__(self, name, start_level=1):
         self.streak = 0
+        self.points = 0
         self.name = name
         self.level = start_level
         self.question = None
@@ -87,24 +88,37 @@ class Game(object):
         io.send("welcome", name=self.name)
 
 
+    def calculate_points(self):
+        if self.question.check:
+            self.points += int(self.level * 100 / self.question.time)
+        else:
+            self.points -= 100
+
+        return self.points
+
+
     def run(self):
+        if self.streak % 5 == 0:
+            self.level = min(max(LEVELS.keys()), self.level + 1)
+
         self.ask_question()
+        points = self.calculate_points()
+        time = self.question.time
+        correct_answer = self.question.correct_answer
 
         if self.question.check:
-            io.send("success", end=' ')
+            io.send("success")
             self.streak += 1
         else:
-            correct_answer = self.question.correct_answer
             io.send("failure", correct_answer)
             self.streak = 0
+            self.level = max(min(LEVELS.keys()), self.level - 1)
 
         if self.streak > 3:
             io.send("streak", streak=self.streak)
-
-        time = self.question.time
+        io.send("points", points=points, end=' ')
         io.send("time", time=time)
 
-        print()
         self.run()
 
 

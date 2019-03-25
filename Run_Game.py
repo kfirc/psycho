@@ -6,16 +6,10 @@ import sys
 import terminal as io
 import log
 
+
 EXIT_REQUEST = ["exit", "quit", "end"]
 HELP_REQUEST = "help"
-
-LEVELS = {1: {"start_num": 1, "end_num":   10, "numbers":   2},
-          2: {"start_num": 1, "end_num":   20, "numbers":   2},
-          3: {"start_num": 1, "end_num":   10, "numbers":   3},
-          4: {"start_num": 1, "end_num":   99, "numbers":   2},
-          5: {"start_num": 1, "end_num":   29, "numbers":   3},
-          6: {"start_num": 1, "end_num":   79, "numbers":   3},
-          }
+NUMBER_OF_LEVELS = 6
 
 
 def timing(f):
@@ -115,7 +109,7 @@ class Game(object):
 
 
     def run(self):
-        if self.current_streak % 5 == 0 and self.current_streak and self.level < max(LEVELS.keys()):
+        if self.current_streak % 5 == 0 and self.current_streak and self.level < NUMBER_OF_LEVELS:
             self.level += 1
             io.send("level up", level=self.level)
 
@@ -130,7 +124,7 @@ class Game(object):
         else:
             io.send("failure", self.question.correct_answer)
             self.current_streak = 0
-            self.level = max(min(LEVELS.keys()), self.level - 1)
+            self.level = max(1, self.level - 1)
 
         self.max_streak = max(self.max_streak, self.current_streak)
         if self.current_streak > 3:

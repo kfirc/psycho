@@ -29,16 +29,15 @@ def timing(f):
 
 
 class Question(object):
-    def __init__(self, question_type, current_streak, initial_level=1):
-        parameters = LEVELS[initial_level]
-        self.numbers = Question.generate_numbers(**parameters)
+    def __init__(self, question_type, current_streak, level=1):
+        self.numbers = self.set_numbers(level)
         self.type = question_type
         self.correct_answer = None
         self.user_answer = None
         self.points = 0
         self.time = 0
         self.current_streak = current_streak
-        self.level = initial_level
+        self.level = level
 
         if question_type == "Multiple":
             operator = '*'
@@ -47,7 +46,16 @@ class Question(object):
 
 
     @staticmethod
-    def generate_numbers(start_num=1, end_num=20, numbers=2):
+    def set_numbers(level):
+        with log.DatabaseConnection('levels') as table:
+            levels_dict = table.read(read_type='dict')
+        parameters = [row for row in levels_dict if row['level'] == str(level)][0]
+        parameters = {k:int(v) for k, v in parameters.items() if k != 'level'}
+        return Question._generate_numbers(**parameters)
+
+
+    @staticmethod
+    def _generate_numbers(start_num=1, end_num=20, numbers=2):
         return [randint(start_num, end_num) for _ in range(numbers)]
 
 

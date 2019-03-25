@@ -4,33 +4,17 @@ from datetime import datetime
 from functools import wraps
 import sys
 import terminal as io
+import log
 
 EXIT_REQUEST = ["exit", "quit", "end"]
 HELP_REQUEST = "help"
 
-LEVELS = {1: {"start_num": 1,
-              "end_num":   10,
-              "numbers":   2},
-
-          2: {"start_num": 1,
-              "end_num":   20,
-              "numbers":   2},
-
-          3: {"start_num": 1,
-              "end_num":   10,
-              "numbers":   3},
-
-          4: {"start_num": 1,
-              "end_num":   99,
-              "numbers":   2},
-
-          5: {"start_num": 1,
-              "end_num":   29,
-              "numbers":   3},
-
-          6: {"start_num": 1,
-              "end_num":   79,
-              "numbers":   3},
+LEVELS = {1: {"start_num": 1, "end_num":   10, "numbers":   2},
+          2: {"start_num": 1, "end_num":   20, "numbers":   2},
+          3: {"start_num": 1, "end_num":   10, "numbers":   3},
+          4: {"start_num": 1, "end_num":   99, "numbers":   2},
+          5: {"start_num": 1, "end_num":   29, "numbers":   3},
+          6: {"start_num": 1, "end_num":   79, "numbers":   3},
           }
 
 
@@ -51,10 +35,13 @@ class Question(object):
         self.type = question_type
         self.correct_answer = None
         self.user_answer = None
+        self.points = 0
         self.time = 0
         self.level = level
 
         if question_type == "Multiple":
+            operator = '*'
+            self.question = operator.join(map(str, self.numbers))
             self.correct_answer = numpy.prod(self.numbers)
 
 
@@ -64,11 +51,24 @@ class Question(object):
 
 
     def ask(self):
-        if self.type == "Multiple":
-            operator = '*'
-        question = operator.join(map(str, self.numbers))
-        io.send("question", question=question, level=self.level)
-        self.user_answer, self.time = Question.get_answer()
+        io.send("question", question=self.question, level=self.level)
+
+        answered = False
+        while not answered:
+            self.user_answer, self.time = Question.get_answer()
+            if self.user_answer is None:
+                Game.help()
+            else:
+                answered = True
+
+        self.calculate_points()
+
+
+    def calculate_points(self):
+        if self.check:
+            self.points += int(self.level * 100 / self.time)
+        else:
+            self.points -= 100
 
 
     @property
@@ -84,29 +84,19 @@ class Question(object):
             return int(user_input)
         elif user_input in EXIT_REQUEST:
             return user_input
-        Game.help()
-        return Question.get_answer()
+        return None
 
 
 class Game(object):
     def __init__(self, name, start_level=1):
         self.streak = 0
         self.max_streak = 0
-        self.points = 0
+        self.total_points = 0
         self.name = name
         self.level = start_level
         self.question = None
 
         io.send("welcome", name=self.name)
-
-
-    def calculate_points(self):
-        if self.question.check:
-            self.points += int(self.level * 100 / self.question.time)
-        else:
-            self.points -= 100
-
-        return self.points
 
 
     def run(self):
@@ -115,35 +105,40 @@ class Game(object):
             io.send("level up", level=self.level)
 
         self.ask_question()
+        self.try_exit()
 
-        if self.question.user_answer in EXIT_REQUEST:
-            self.exit_game()
+        self.total_points += self.question.points
+        self.log()
+
+        if self.question.check:
+            io.send("success")
+            self.streak += 1
         else:
-            points = self.calculate_points()
-            time = self.question.time
-            correct_answer = self.question.correct_answer
+            io.send("failure", self.question.correct_answer)
+            self.streak = 0
+            self.level = max(min(LEVELS.keys()), self.level - 1)
 
-            if self.question.check:
-                io.send("success")
-                self.streak += 1
-            else:
-                io.send("failure", correct_answer)
-                self.streak = 0
-                self.level = max(min(LEVELS.keys()), self.level - 1)
+        self.max_streak = max(self.max_streak, self.streak)
+        if self.streak > 3:
+            io.send("streak", streak=self.streak)
+        io.send("points", points=self.total_points, end=' ')
+        io.send("time", time=self.question.time)
+        io.send("question end")
 
-            if self.streak > 3:
-                io.send("streak", streak=self.streak)
-            io.send("points", points=points, end=' ')
-            io.send("time", time=time)
-            io.send("question end")
-
-            self.max_streak = max(self.max_streak, self.streak)
-            self.run()
+        self.run()
 
 
-    def exit_game(self):
-        io.send("quit", streak=self.max_streak, points=self.points)
-        sys.exit()
+    def log(self):
+        data = (self.name, self.level, self.total_points, self.streak, self.question.question, self.question.user_answer, self.question.correct_answer, self.question.check)
+        #data = tuple(map(str, data))
+        with  log.DatabaseConnection('GameDB') as db:
+            db.append(data)
+
+
+    def try_exit(self):
+        if self.question.user_answer in EXIT_REQUEST:
+            io.send("quit", streak=self.max_streak, points=self.total_points)
+            sys.exit()
 
 
     @staticmethod

@@ -1,34 +1,50 @@
 __author__ = 'Kfir'
-import csv
+
+import openpyxl
+import pandas as pd
+from itertools import islice
 
 DB_PATH = "database\\"
-FILE_FORMAT = '.csv'
+FILE_FORMAT = '.xlsx'
 
 
 class DatabaseConnection(object):
     def __init__(self, table, directory=DB_PATH):
         self.path = directory + table + FILE_FORMAT
-        self.file = None
+        self.wb = None
+        self.ws = None
 
 
     def __enter__(self):
-        self.file = open(self.path, 'a+', newline='')
+        self.load()
         return self
 
 
     def __exit__(self, exception_type, exception_value, traceback):
-        self.file.close()
+        self.save()
+
+
+    def load(self):
+        self.wb = openpyxl.load_workbook(self.path)
+        self.ws = self.wb.active
+
+
+    def save(self, new_path=None):
+        if new_path:
+            self.wb.save(new_path)
+        else:
+            self.wb.save(self.path)
 
 
     def append(self, data):
-        writer = csv.writer(self.file, delimiter=',')
-        writer.writerow(data)
+        self.ws.append(data)
 
 
-    def read(self, read_type='raw'):
-        self.file.seek(0)
-        if read_type == 'dict':
-            data = list(csv.DictReader(self.file, delimiter=','))
-        elif read_type == 'raw':
-            data = self.file.read()
-        return data
+    def read(self):
+        data = self.ws.values
+        cols = next(data)[1:]
+        data = list(data)
+        idx = [r[0] for r in data]
+        data = (islice(r, 1, None) for r in data)
+        df = pd.DataFrame(data, index=idx, columns=cols)
+        return df

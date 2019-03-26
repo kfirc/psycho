@@ -42,9 +42,8 @@ class Question(object):
     @staticmethod
     def set_numbers(level):
         with log.DatabaseConnection('levels') as table:
-            levels_dict = table.read(read_type='dict')
-        parameters = [row for row in levels_dict if row['level'] == str(level)][0]
-        parameters = {k:int(v) for k, v in parameters.items() if k != 'level'}
+            df = table.read()
+        parameters = df.loc[[level]].to_dict(orient='records')[0]
         return Question._generate_numbers(**parameters)
 
 
@@ -64,10 +63,10 @@ class Question(object):
             else:
                 answered = True
 
-        self.calculate_points()
+        self._calculate_points()
 
 
-    def calculate_points(self):
+    def _calculate_points(self):
         if self.correct:
             self.points += int(self.level * 100 / self.time)
         else:
@@ -91,7 +90,7 @@ class Question(object):
 
 
     def log(self):
-        question_data = (self.level, self.points, self.current_streak, self.question, self.user_answer, self.correct_answer, self.correct)
+        question_data = (self.level, self.points, self.current_streak, self.time, self.question, self.user_answer, self.correct_answer, self.correct)
         with log.DatabaseConnection('questions') as db:
             db.append(question_data)
 
@@ -101,6 +100,7 @@ class Game(object):
         self.current_streak = 0
         self.max_streak = 0
         self.total_points = 0
+        self.total_time = 0
         self.name = name
         self.level = start_level
         self.question = None
@@ -109,32 +109,45 @@ class Game(object):
 
 
     def run(self):
-        if self.current_streak % 5 == 0 and self.current_streak and self.level < NUMBER_OF_LEVELS:
-            self.level += 1
-            io.send("level up", level=self.level)
-
         self.ask_question()
+
         self.try_exit()
         self.question.log()
+
         self.total_points += self.question.points
+        self.total_time += self.question.time
+        self._calculate_streak()
 
         if self.question.correct:
             io.send("success")
-            self.current_streak += 1
         else:
             io.send("failure", self.question.correct_answer)
-            self.current_streak = 0
-            self.level = max(1, self.level - 1)
 
-        self.max_streak = max(self.max_streak, self.current_streak)
         if self.current_streak > 3:
             io.send("streak", streak=self.current_streak)
+
         io.send("points", points=self.total_points, end=' ')
         io.send("time", time=self.question.time)
         io.send("question end")
 
+        self._calculate_level()
         self.run()
 
+
+    def _calculate_streak(self):
+        if self.question.correct:
+            self.current_streak += 1
+        else:
+            self.current_streak = 0
+
+        self.max_streak = max(self.max_streak, self.current_streak)
+
+    def _calculate_level(self):
+        if not self.question.correct:
+            self.level = max(1, self.level - 1)
+        elif self.current_streak % 5 == 0 and self.current_streak and self.level < NUMBER_OF_LEVELS:
+            self.level += 1
+            io.send("level up", level=self.level)
 
     def log(self):
         game_data = (self.name, self.level, self.total_points, self.max_streak)

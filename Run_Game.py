@@ -22,16 +22,34 @@ def timing(f):
     return wrapper
 
 
+
+class Level(object):
+    def __init__(self, level):
+        with log.DatabaseConnection('levels') as table:
+            df = table.read()
+
+        self.level = level
+        parameters = df.loc[[level]].to_dict(orient='records')[0]
+        self.start_num = parameters["start_num"]
+        self.end_num = parameters["end_num"]
+        self.numbers = parameters["numbers"]
+        self.time = parameters["time"]
+
+
+    def generate_numbers(self):
+        return [randint(self.start_num, self.end_num) for _ in range(self.numbers)]
+
+
 class Question(object):
-    def __init__(self, question_type, current_streak, level=1):
-        self.numbers = self.set_numbers(level)
+    def __init__(self, question_type, current_streak, level):
+        self.level = level
+        self.numbers = self.level.generate_numbers()
         self.type = question_type
         self.correct_answer = None
         self.user_answer = None
         self.points = 0
         self.time = 0
         self.current_streak = current_streak
-        self.level = level
 
         if question_type == "Multiple":
             operator = '*'
@@ -39,21 +57,8 @@ class Question(object):
             self.correct_answer = numpy.prod(self.numbers)
 
 
-    @staticmethod
-    def set_numbers(level):
-        with log.DatabaseConnection('levels') as table:
-            df = table.read()
-        parameters = df.loc[[level]].to_dict(orient='records')[0]
-        return Question._generate_numbers(**parameters)
-
-
-    @staticmethod
-    def _generate_numbers(start_num=1, end_num=20, numbers=2):
-        return [randint(start_num, end_num) for _ in range(numbers)]
-
-
     def ask(self):
-        io.send("question", question=self.question, level=self.level)
+        io.send("question", question=self.question, time=self.level.time)
 
         answered = False
         while not answered:
@@ -67,8 +72,8 @@ class Question(object):
 
 
     def _calculate_points(self):
-        if self.correct:
-            self.points += int(self.level * 100 / self.time)
+        if self.correct and self.in_time:
+            self.points += int(self.level.level * 100 / self.time)
         else:
             self.points -= 100
 
@@ -76,6 +81,11 @@ class Question(object):
     @property
     def correct(self):
         return self.user_answer == self.correct_answer
+
+
+    @property
+    def in_time(self):
+        return self.time <= self.level.time
 
 
     @staticmethod
@@ -90,7 +100,7 @@ class Question(object):
 
 
     def log(self):
-        question_data = (self.level, self.points, self.current_streak, self.time, self.question, self.user_answer, self.correct_answer, self.correct)
+        question_data = (self.level.level, self.points, self.current_streak, self.time, self.question, self.user_answer, self.correct_answer, self.correct, self.in_time)
         with log.DatabaseConnection('questions') as db:
             db.append(question_data)
 
@@ -102,7 +112,7 @@ class Game(object):
         self.total_points = 0
         self.total_time = 0
         self.name = name
-        self.level = start_level
+        self.level = Level(start_level)
         self.question = None
 
         io.send("welcome", name=self.name)
@@ -118,9 +128,11 @@ class Game(object):
         self.total_time += self.question.time
         self._calculate_streak()
 
-        if self.question.correct:
+        if self.question.correct and self.question.in_time:
             io.send("success")
-        else:
+        elif not self.question.in_time:
+            io.send("time failure", self.question.correct_answer)
+        elif not self.question.correct:
             io.send("failure", self.question.correct_answer)
 
         if self.current_streak > 3:
@@ -135,22 +147,23 @@ class Game(object):
 
 
     def _calculate_streak(self):
-        if self.question.correct:
+        if self.question.correct and self.question.in_time:
             self.current_streak += 1
         else:
             self.current_streak = 0
 
         self.max_streak = max(self.max_streak, self.current_streak)
 
+
     def _calculate_level(self):
-        if not self.question.correct:
-            self.level = max(1, self.level - 1)
-        elif self.current_streak % 5 == 0 and self.current_streak and self.level < NUMBER_OF_LEVELS:
-            self.level += 1
-            io.send("level up", level=self.level)
+        if not (self.question.correct and self.question.in_time):
+            self.level = Level(max(1, self.level.level - 1))
+        elif self.current_streak % 5 == 0 and self.current_streak and self.level.level < NUMBER_OF_LEVELS:
+            self.level = Level(self.level.level + 1)
+            io.send("level up", level=self.level.level)
 
     def log(self):
-        game_data = (self.name, self.level, self.total_points, self.max_streak)
+        game_data = (self.name, self.level.level, self.total_points, self.total_time, self.max_streak)
         with log.DatabaseConnection('games') as db:
             db.append(game_data)
 

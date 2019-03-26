@@ -3,14 +3,15 @@ __author__ = 'Kfir'
 MESSAGE = {"help":              "Please answer with numbers only.\r\nTo exit, please type 'exit'",
            "welcome":           "Hello {name}, and welcome to the psycho app!\r\nYou can exit anytime by typing 'exit'\r\n",
            "quit":              "\nYour Score: {points}\nMax streak: {streak}\nThank you and goodbye!",
-           "failure":           "incorrect, the answer is {}, better luck next time!",
+           "time failure":      "Times up! The correct answer is {}",
+           "failure":           "Incorrect, The answer is {}",
            "success":           "Hooray!",
            "answer" :           "Your answer: ",
            "time":              "Elapsed time: {time}",
            "streak":            "You got {streak} in a row!",
            "level up":          "--------LEVEL {level}--------",
            "points":            "Points: {points}",
-           "question": "Level {level}: What is {question}?",
+           "question": "{time} seconds: What is {question}?",
            "question end":      "\n"
            }
 LB = '\n'

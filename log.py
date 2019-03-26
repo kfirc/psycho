@@ -3,14 +3,16 @@ __author__ = 'Kfir'
 import openpyxl
 import pandas as pd
 from itertools import islice
+from os import listdir
+from os.path import isfile, join, splitext
 
 DB_PATH = "database\\"
-FILE_FORMAT = '.xlsx'
+FILE_EXTENSION = '.xlsx'
 
 
 class DatabaseConnection(object):
     def __init__(self, table, directory=DB_PATH):
-        self.path = directory + table + FILE_FORMAT
+        self.path = directory + table + FILE_EXTENSION
         self.wb = None
         self.ws = None
 
@@ -22,6 +24,12 @@ class DatabaseConnection(object):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.save()
+
+
+    @staticmethod
+    def tables():
+        all_tables = [splitext(f)[0] for f in listdir(DB_PATH) if isfile(join(DB_PATH, f))]
+        return all_tables
 
 
     def load(self):
